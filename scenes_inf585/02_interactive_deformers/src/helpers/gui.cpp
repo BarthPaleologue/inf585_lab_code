@@ -21,6 +21,7 @@ bool gui_parameters::display()
 	ImGui::RadioButton("Translate",ptr_deformer_type, deform_translate); ImGui::SameLine();
     ImGui::RadioButton("Twist",ptr_deformer_type, deform_twist); ImGui::SameLine();
     ImGui::RadioButton("Scale",ptr_deformer_type, deform_scale);
+    ImGui::RadioButton("Noise",ptr_deformer_type, deform_noise);
 
 	ImGui::Text("Deformer direction:"); // Select the type of deformation to apply
 	int* ptr_deformer_direction = (int*)&deformer_parameters.direction;

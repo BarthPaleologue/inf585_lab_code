@@ -35,22 +35,56 @@ void apply_deformation(mesh& shape, numarray<vec3> const& position_before_deform
 		{
 			// Hint: You can convert the 2D translation in screen space into a 3D translation in the view plane in multiplying 
 			//       camera_orientation * vec3(translate_screen, 0)
-			vec3 const translation = camera_orientation * vec3(translate_screen, 0.0f);
+			vec3 translation = camera_orientation * vec3(translate_screen, 0.0f);
+            if(deformer_parameters.direction == direction_surface_normal) {
+                translation = dot(translation, n_clicked) * n_clicked;
+            }
 
 			// Fake deformation (linear translation in the screen space) 
 			//   the following lines should be modified to get the expected smooth deformation
-			if (dist < r)
-				p_shape = p_shape_original + (1 - dist / r) * translation;
+			if (dist < r) {
+                float t = 1.0f - dist / r;
+                //float smoothT = 0.5f - 0.5f * cosf(t * M_PI);
+                float smoothT = t * t * (3.0f - 2.0f * t);
+                p_shape = p_shape_original + smoothT * translation;
+            }
 
 		}
 		if (deformer_parameters.type == deform_twist)
 		{
-			// Deformation to implement
+			vec3 twist_axis = camera_orientation * vec3(0, 0, 1);
+            if(deformer_parameters.direction == direction_surface_normal) {
+                twist_axis = n_clicked;
+            }
+
+            if(dist < r) {
+                float angle = translate_screen.x * M_PI * 0.5f * (1.0f - dist / r);
+                p_shape = rotation_axis_angle(twist_axis, angle) * (p_shape_original - p_clicked) + p_clicked;
+            }
 		}
 		if (deformer_parameters.type == deform_scale)
 		{
-			// Deformation to implement"
+			if(dist < r) {
+                float t = (1.0f - dist / r);
+                float smoothT = t * t * (3.0f - 2.0f * t);
+                float scale = 1.0f + translate_screen.x * smoothT;
+                p_shape = scale * (p_shape_original - p_clicked) + p_clicked;
+            }
 		}
+        if(deformer_parameters.type == deform_noise) {
+            vec3 translation = camera_orientation * vec3(translate_screen, 0.0f);
+            if(deformer_parameters.direction == direction_surface_normal) {
+                translation = dot(translation, n_clicked) * n_clicked;
+            }
+
+            if (dist < r) {
+                float t = 1.0f - dist / r;
+                //float smoothT = 0.5f - 0.5f * cosf(t * M_PI);
+                float smoothT = t * t * (3.0f - 2.0f * t);
+                float noise = noise_perlin(p_shape_original, 8, 2.0);
+                p_shape = p_shape_original + smoothT * translation * noise / 200.0f;
+            }
+        }
 
 	}
 
