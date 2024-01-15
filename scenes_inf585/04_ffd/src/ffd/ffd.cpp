@@ -38,6 +38,20 @@ numarray<grid_3D<float> > precompute_weights(numarray<vec3>& position, int Nx, i
 	// - Accessing/Modifying an element at index (kx,ky,kz):
 	//   element=G(kx,ky,kz); or G(kx,ky,kz)=element;
 
+    for (int k = 0; k < position.size(); k++) {
+        weights[k].resize(Nx, Ny, Nz);
+        for (int kx = 0; kx < Nx; kx++) {
+            for (int ky = 0; ky < Ny; ky++) {
+                for (int kz = 0; kz < Nz; kz++) {
+                    float b_kx = binomial_coeff(Nx-1, kx) * pow(1-position[k].x, Nx-1-kx) * pow(position[k].x, kx);
+                    float b_ky = binomial_coeff(Ny-1, ky) * pow(1-position[k].y, Ny-1-ky) * pow(position[k].y, ky);
+                    float b_kz = binomial_coeff(Nz-1, kz) * pow(1-position[k].z, Nz-1-kz) * pow(position[k].z, kz);
+                    weights[k](kx, ky, kz) = b_kx * b_ky * b_kz;
+                }
+            }
+        }
+    }
+
 	return weights;
 }
 
@@ -55,5 +69,18 @@ void ffd_deform(numarray<vec3>& position, grid_3D<vec3> const& grid, numarray<gr
 	// General formulation:
 	// For all position k of the shape to be deformed
 	//     position[k] = sum_{x,y,z} weights[k] * grid(x,y,z)
+
+    for (int k = 0; k < N_vertex; k++) {
+        vec3 sum = vec3(0,0,0);
+        for (int kx = 0; kx < Nx; kx++) {
+            for (int ky = 0; ky < Ny; ky++) {
+                for (int kz = 0; kz < Nz; kz++) {
+                    sum += weights[k](kx, ky, kz) * grid(kx, ky, kz);
+                }
+            }
+        }
+        position[k] = sum;
+    }
+
 
 }
