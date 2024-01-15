@@ -81,8 +81,12 @@ float deformation(float x, float y, float t) {
 	// -------------------- //
 	for(int k=0; k<DROPLET_NUMBER; k++) {
 		float dist = length(vec2(x,y)-vec2(droplet_x0[k],droplet_y0[k]));
-		if(droplet_active[k]==1.0 && dist<0.2) {
-			z_out = 0.2-dist;
+		if(droplet_active[k]==1.0 && dist<3.0) {
+            float t0 = droplet_t0[k];
+			float wave = 0.1 * sin(20.0*(t-t0) - 15.0 * dist) / (1.0+dist*dist) * (dist - 3.0);
+            wave *= smoothstep(1.0, 0.0, (t-t0) * 0.7      ); // end of the wave
+            wave *= smoothstep(0.0, 1.0, (t-t0) * 0.3); // beginning of the wave
+            z_out += wave;
 		}
 	}
 	// --------------------- //

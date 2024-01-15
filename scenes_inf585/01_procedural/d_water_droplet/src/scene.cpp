@@ -104,6 +104,13 @@ void scene_structure::display_frame()
 	// Send the water droplet parameters to the shader as uniform (encoded as vec4)
 	for(int k=0; k<DROPLET_NUMBER; ++k) {
 		environment.uniform_generic.uniform_vec4["droplet_"+str(k)] = droplet_param[k];
+
+        float z = 1.0f - clamp(4.0f * (timer.t-droplet_param[k][2]),0.0f,1.0f);//*droplet_param[k][3];
+
+        if(z > 0.0f) {
+            falling_sphere.model.translation = vec3(droplet_param[k][0], droplet_param[k][1], z);
+            draw(falling_sphere, environment);
+        }
 	}
 
 	// Dimension of the water surface
@@ -116,7 +123,6 @@ void scene_structure::display_frame()
 	if(gui.display_wireframe) {
 		draw_wireframe(water, environment);
 	}
-
 
 
 }
