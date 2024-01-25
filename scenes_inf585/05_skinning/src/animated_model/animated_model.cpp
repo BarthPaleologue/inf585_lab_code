@@ -49,9 +49,6 @@ void animated_model_structure::skinning_lbs() {
             normal_to_be_deformed += weigh_ij * T.transform_vector(normal_in_bind_pose);
         }
 
-        // normalize the normal
-        normal_to_be_deformed = normalize(normal_to_be_deformed);
-
         // Do some computation ...
         //position_to_be_deformed = position_in_bind_pose;   // to be changed
         //normal_to_be_deformed = normal_in_bind_pose; // to be changed
