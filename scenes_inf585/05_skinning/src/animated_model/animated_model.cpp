@@ -4,13 +4,11 @@
 using namespace cgp;
 
 
-
-void animated_model_structure::skinning_lbs()
-{
+void animated_model_structure::skinning_lbs() {
     // ************************************************************** //
-	// TO DO: Compute the Linear Blend Skinning (LBS) deformation
-	// ...
-	// ************************************************************** //
+    // TO DO: Compute the Linear Blend Skinning (LBS) deformation
+    // ...
+    // ************************************************************** //
     //
     // Help:
     //     - The function should update the values of rigged_mesh.mesh_deformed.position based on the skeleton and bind pose (rigged_mesh.mesh_bind_pose.position)
@@ -29,27 +27,43 @@ void animated_model_structure::skinning_lbs()
 
     // Example of looping over the positions of the mesh
     int N_vertex = rigged_mesh.mesh_bind_pose.position.size();
-    for(int k_vertex=0; k_vertex<N_vertex; ++k_vertex) {
-        vec3 const& position_in_bind_pose = rigged_mesh.mesh_bind_pose.position[k_vertex]; // The "initial/bind pose" position p0
-        vec3 const& normal_in_bind_pose = rigged_mesh.mesh_bind_pose.normal[k_vertex];     // The "initial/bind pose" normal n0
-        vec3& position_to_be_deformed = rigged_mesh.mesh_deformed.position[k_vertex];      // The position to be deformed by LBS
-        vec3& normal_to_be_deformed = rigged_mesh.mesh_deformed.normal[k_vertex];         // The normal to be deformed by LBS
+    for (int k_vertex = 0; k_vertex < N_vertex; ++k_vertex) {
+        vec3 const &position_in_bind_pose = rigged_mesh.mesh_bind_pose.position[k_vertex]; // The "initial/bind pose" position p0
+        vec3 const &normal_in_bind_pose = rigged_mesh.mesh_bind_pose.normal[k_vertex];     // The "initial/bind pose" normal n0
+        vec3 &position_to_be_deformed = rigged_mesh.mesh_deformed.position[k_vertex];      // The position to be deformed by LBS
+        vec3 &normal_to_be_deformed = rigged_mesh.mesh_deformed.normal[k_vertex];         // The normal to be deformed by LBS
 
+        position_to_be_deformed = vec3();
+        normal_to_be_deformed = vec3();
 
+        int nb_joints = rigged_mesh.skinning_weight[k_vertex].size();
+        for(int k_joint = 0; k_joint < nb_joints; k_joint++) {
+            float weigh_ij = rigged_mesh.skinning_weight[k_vertex][k_joint];
+
+            auto M = skeleton.joint_matrix_global[k_joint];
+            auto M0 = skeleton.joint_matrix_global_bind_pose[k_joint];
+            auto invM0 = M0.inverse_assuming_rigid_transform();
+            auto T = M * invM0;
+
+            position_to_be_deformed += weigh_ij * T.transform_position(position_in_bind_pose);
+            normal_to_be_deformed += weigh_ij * T.transform_vector(normal_in_bind_pose);
+        }
+
+        // normalize the normal
+        normal_to_be_deformed = normalize(normal_to_be_deformed);
 
         // Do some computation ...
-        position_to_be_deformed = position_in_bind_pose;   // to be changed
-        normal_to_be_deformed  = normal_in_bind_pose; // to be changed
+        //position_to_be_deformed = position_in_bind_pose;   // to be changed
+        //normal_to_be_deformed = normal_in_bind_pose; // to be changed
     }
 
 }
 
-void animated_model_structure::skinning_dqs()
-{
+void animated_model_structure::skinning_dqs() {
     // ************************************************************** //
-	// TO DO: Compute Dual Quaternion Skinning (DQS) deformation
-	// ...
-	// ************************************************************** //
+    // TO DO: Compute Dual Quaternion Skinning (DQS) deformation
+    // ...
+    // ************************************************************** //
     //
     // Help:
     //     - Given a mat4 representing a rigid transformation, the following syntax allows to access the rotation and translation part:
