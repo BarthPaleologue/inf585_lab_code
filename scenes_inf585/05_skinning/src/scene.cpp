@@ -30,22 +30,19 @@ compute_skinning_weights_generic(cgp::mesh const &m, skeleton_structure const &s
     //   - You can use the syntax sum({numarray}) to compute the sum over all the values cgp::numarray
     //
 
-    // The following create a skinning weights that rigidly attach all the vertices to the first (root) joint and need to be changed.
+    // The following create skinning weights using the distance between the vertex and the joint (closer = more influence)
     for (int k_vertex = 0; k_vertex < N_vertex; ++k_vertex) {
-        float min_dist = 1000000;
-        int min_joint = 0;
-        float sum_dist = 0;
-        for (int k_joint = 0; k_joint < N_joint; ++k_joint) {
-            float dist = norm(m.position[k_vertex] - skeleton.joint_matrix_global_bind_pose[k_joint].get_block_translation());
-            if (dist < min_dist) {
-                min_dist = dist;
-                min_joint = k_joint;
-            }
-            sum_dist += 1.0f / powf(dist, power_factor);
+        float weight_sum = 0.0f;
+        for(int k_joint = 0; k_joint < N_joint; ++k_joint) {
+            float distance = norm(m.position[k_vertex] - skeleton.joint_matrix_global_bind_pose[k_joint].get_block_translation());
+
+            weights[k_vertex][k_joint] = 1.0f / std::pow(distance, power_factor);
+            weight_sum += weights[k_vertex][k_joint];
         }
 
-        float num = 1.0f / powf(min_dist, power_factor);
-        weights[k_vertex][min_joint] = num / sum_dist;
+        for(int k_joint = 0; k_joint < N_joint; ++k_joint) {
+            weights[k_vertex][k_joint] /= weight_sum;
+        }
     }
 
     return weights;
