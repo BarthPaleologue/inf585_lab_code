@@ -62,7 +62,8 @@ add_definitions(-DCGP_OPENGL_3_3)   # for OpenGL 3.3
 #  @src_files: the local file for this project
 #  @src_files_cgp: all files of the cgp library
 #  @src_files_third_party: all third party libraries compiled with the project
-add_executable(${executable_name} ${src_files_cgp} ${src_files_third_party} ${src_files})
+add_executable(${executable_name} ${src_files_cgp} ${src_files_third_party} ${src_files}
+        src/DualQuaternion.h)
 
 
 # Set Compiler for Unix system

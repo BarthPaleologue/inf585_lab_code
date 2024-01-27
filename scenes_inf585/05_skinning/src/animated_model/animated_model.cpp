@@ -1,4 +1,5 @@
 #include "animated_model.hpp"
+#include "DualQuaternion.h"
 
 
 using namespace cgp;
@@ -69,5 +70,33 @@ void animated_model_structure::skinning_dqs() {
     //         vec3 translation = a.translation
     //     - The quaternion of a rotation_transform can be accessed via {rotation_transform}.get_quaternion();
     //     - The structure quaternion is a specialized type derived from a vec4. You can access to its .x .y .z .w component similarily to a vec4.
-    //     
+    //
+
+    int N_vertex = rigged_mesh.mesh_bind_pose.position.size();
+    for(int k_vertex = 0; k_vertex < N_vertex; k_vertex++) {
+        vec3 const &position_in_bind_pose = rigged_mesh.mesh_bind_pose.position[k_vertex]; // The "initial/bind pose" position p0
+        vec3 const &normal_in_bind_pose = rigged_mesh.mesh_bind_pose.normal[k_vertex];     // The "initial/bind pose" normal n0
+        vec3 &position_to_be_deformed = rigged_mesh.mesh_deformed.position[k_vertex];      // The position to be deformed by LBS
+        vec3 &normal_to_be_deformed = rigged_mesh.mesh_deformed.normal[k_vertex];         // The normal to be deformed by LBS
+
+        auto dualQuaternionSum = DualQuaternion::FromRotationTranslation(quaternion(0,0,0,0), vec3(0,0,0));
+
+        int nb_joints = rigged_mesh.skinning_weight[k_vertex].size();
+        for(int k_joint = 0; k_joint < nb_joints; k_joint++) {
+            auto weigh_ij = rigged_mesh.skinning_weight[k_vertex][k_joint];
+
+            auto M = skeleton.joint_matrix_global[k_joint];
+            auto rotationQuaternion = affine_rt::from_matrix(M).rotation.get_quaternion();
+            auto translation = affine_rt::from_matrix(M).translation;
+
+            auto dualQuaternion = DualQuaternion::FromRotationTranslation(rotationQuaternion, translation);
+
+            dualQuaternionSum = dualQuaternionSum + dualQuaternion * weigh_ij;
+        }
+
+        auto transformation = dualQuaternionSum.getMatrix();
+
+        position_to_be_deformed = transformation.transform_position(position_in_bind_pose);
+        normal_to_be_deformed = transformation.transform_vector(normal_in_bind_pose);
+    }
 }
