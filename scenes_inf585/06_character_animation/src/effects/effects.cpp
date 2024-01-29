@@ -198,6 +198,22 @@ void effect_rotate_head_toward_objective_position(skeleton_structure &skeleton, 
      *
      */
 
+    mat4 &joint_head_matrix_global = skeleton.joint_matrix_global[15]; // The given index was wrong. So I hardcoded it here.
+
+    vec3 current_forward = {0, 0, 1};
+    current_forward = joint_head_matrix_global.get_block_linear() * current_forward;
+
+    vec3 target_forward = normalize(objective_position - joint_head_matrix_global.get_block_translation());
+
+    vec3 rotation_axis = cross(current_forward, target_forward);
+
+    float rotation_angle = acos(dot(current_forward, target_forward));
+    rotation_angle = std::min(rotation_angle, 0.9f);
+    rotation_angle = std::max(rotation_angle, -0.9f);
+
+    rotation_transform r = rotation_axis_angle(rotation_axis, rotation_angle);
+
+    joint_head_matrix_global.apply_transform_to_block_linear(r.matrix());
 }
 
 
