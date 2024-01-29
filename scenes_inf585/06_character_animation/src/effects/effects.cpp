@@ -172,8 +172,49 @@ void effect_walking(effect_walking_structure &effect_walking, character_structur
      *
      */
 
+    // Update the timer
+    effect_walking.timer.update();
 
+    // Get the elapsed time since the last update
+    float dt = effect_walking.timer.t;
 
+    // Get the current position and angle of the character
+    vec3 &root_position = effect_walking.root_position;
+    float &root_angle = effect_walking.root_angle;
+
+    vec3 forward = {0, 0, 1};
+
+    // rotate the forward vector according to the current angle
+    rotation_transform r = rotation_axis_angle({0, 1, 0}, root_angle);
+    forward = r.matrix() * forward;
+
+    // Compute the displacement of the character
+    vec3 displacement = {0, 0, 0};
+    if (inputs.keyboard.is_pressed(GLFW_KEY_UP) || inputs.keyboard.is_pressed(GLFW_KEY_W)) {
+        displacement += forward * dt * 0.005;
+    }
+
+    float dtheta = 0;
+
+    if(inputs.keyboard.is_pressed(GLFW_KEY_LEFT) || inputs.keyboard.is_pressed(GLFW_KEY_A)) {
+        dtheta = dt * 0.02;
+    }
+
+    if(inputs.keyboard.is_pressed(GLFW_KEY_RIGHT) || inputs.keyboard.is_pressed(GLFW_KEY_D)) {
+        dtheta = -dt * 0.02;
+    }
+
+    affine_rt a = affine_rt(r, root_position);
+
+    // update skeleton (for each joint, apply the displacement and rotation)
+    for (int i = 0; i < character.animated_model.skeleton.joint_matrix_global.size(); i++) {
+        mat4 &joint_matrix_global = character.animated_model.skeleton.joint_matrix_global[i];
+
+        joint_matrix_global.set_block_translation(joint_matrix_global.get_block_translation() + root_position);
+    }
+
+    effect_walking.root_position += displacement;
+    effect_walking.root_angle += dtheta;
 }
 
 
