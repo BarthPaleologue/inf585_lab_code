@@ -297,7 +297,142 @@ void effect_ik_compute(effect_ik_structure const &effect_ik, skeleton_structure 
      *
      */
 
+    int joint_end = effect_ik.joint_target;
+    int joint_start = effect_ik.joint_root_ik;
 
+    vec3 p_constrained = effect_ik.target_position + effect_ik.target_offset;
+
+    // FabriK algorithm
+    // 1. Compute the distance between the constrained joint and the objective position
+    vec3 p = skeleton.joint_matrix_global[joint_end].get_block_translation();
+    vec3 delta = p_constrained - p;
+
+    // 2. Compute the length of the kinematic chain
+    float length = 0;
+    int current_joint = joint_end;
+
+    while(current_joint != joint_start) {
+        vec3 p1 = skeleton.joint_matrix_global[current_joint].get_block_translation();
+        vec3 p2 = skeleton.joint_matrix_global[skeleton.parent_index[current_joint]].get_block_translation();
+        length += norm(p1 - p2);
+        current_joint = skeleton.parent_index[current_joint];
+    }
+
+    // 3. If the distance is greater than the length of the chain, we cannot reach the objective position
+    if(norm(delta) > length) {
+        return;
+    }
+
+    // for a joint, find its parent
+    std::map<int, int> parent_index;
+    // for a joint, find its child in the kinematic chain
+    std::map<int, int> child_index;
+
+    for(int i = 0; i < skeleton.joint_matrix_global.size(); i++) {
+        int parent = skeleton.parent_index[i];
+        parent_index[i] = parent;
+
+        if(parent != -1) {
+            child_index[parent] = i;
+        }
+    }
+
+    std::map<int, float> joint_distance_parent;
+    std::map<int, float> joint_distance_child;
+
+    current_joint = joint_end;
+    while(current_joint != joint_start) {
+        vec3 p1 = skeleton.joint_matrix_global[current_joint].get_block_translation();
+        vec3 p2 = skeleton.joint_matrix_global[parent_index[current_joint]].get_block_translation();
+
+        joint_distance_parent[current_joint] = norm(p1 - p2);
+
+        current_joint = parent_index[current_joint];
+    }
+
+    current_joint = joint_start;
+    while(current_joint != joint_end) {
+        vec3 p1 = skeleton.joint_matrix_global[current_joint].get_block_translation();
+        vec3 p2 = skeleton.joint_matrix_global[child_index[current_joint]].get_block_translation();
+
+        joint_distance_child[current_joint] = norm(p1 - p2);
+
+        current_joint = child_index[current_joint];
+    }
+
+    // set position of the constrained joint
+    skeleton.joint_matrix_global[joint_end].set_block_translation(p_constrained);
+
+    for(int i = 0; i < 10; i++) {
+        // back propagation
+        current_joint = joint_end;
+
+        while (current_joint != joint_start) {
+            // skip the root joint
+            if(current_joint == joint_end) {
+                current_joint = parent_index[current_joint];
+                continue;
+            }
+
+            // get the position of the current joint
+            vec3 p1 = skeleton.joint_matrix_global[current_joint].get_block_translation();
+            // get the position of the parent joint
+
+            vec3 p2 = skeleton.joint_matrix_global[parent_index[current_joint]].get_block_translation();
+
+            // compute the direction of the joint
+            vec3 direction = normalize(p2 - p1);
+
+            // the new position of the joint is the position of the parent joint + the length of the joint * the direction
+            vec3 new_position = p2 + joint_distance_parent[current_joint] * direction;
+
+            skeleton.joint_matrix_global[current_joint].set_block_translation(new_position);
+
+            // update the current joint
+            current_joint = parent_index[current_joint];
+        }
+
+        // forward propagation
+        current_joint = joint_start;
+
+        while(current_joint != joint_end) {
+            // skip the root joint
+            if(current_joint == joint_start) {
+                current_joint = child_index[current_joint];
+                continue;
+            }
+
+            // get the position of the current joint
+            vec3 p1 = skeleton.joint_matrix_global[current_joint].get_block_translation();
+            // get the position of the child joint
+            vec3 p2 = skeleton.joint_matrix_global[child_index[current_joint]].get_block_translation();
+
+            // compute the direction of the joint
+            vec3 direction = normalize(p2 - p1);
+
+            // the new position of the joint is the position of the child joint - the length of the joint * the direction
+            vec3 new_position = p2 - joint_distance_child[current_joint] * direction;
+
+            skeleton.joint_matrix_global[current_joint].set_block_translation(new_position);
+
+            // update the current joint
+            current_joint = child_index[current_joint];
+        }
+    }
+
+    // move children of end joint by delta
+    std::function<void(int)> moveJoint = [&](int joint) {
+        vec3 p = skeleton.joint_matrix_global[joint].get_block_translation();
+        skeleton.joint_matrix_global[joint].set_block_translation(p + delta);
+
+        for(int child : skeleton.child(joint)) {
+            moveJoint(child);
+        }
+    };
+
+    for(int child : skeleton.child(joint_end)) {
+        moveJoint(child);
+    }
 }
 
 
