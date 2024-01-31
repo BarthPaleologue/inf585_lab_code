@@ -34,6 +34,16 @@ struct effect_ik_structure {
 	cgp::vec3 target_position; // Base target position
 	cgp::vec3 target_offset;   // Offset of the target position (to be added to objective_position)
 	bool active = false; // Is the IK effect currently active
+
+
+    // for a joint, find its parent
+    std::map<int, int> parent_index;
+    // for a joint, find its child in the kinematic chain
+    std::map<int, int> child_index;
+
+    std::map<int, float> joint_distance_parent;
+    std::map<int, float> joint_distance_child;
+
 };
 
 

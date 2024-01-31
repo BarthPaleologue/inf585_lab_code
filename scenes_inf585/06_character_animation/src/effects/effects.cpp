@@ -266,6 +266,35 @@ void effect_ik_start(effect_ik_structure &effect_ik, skeleton_structure &skeleto
     // set this position as the default objective for the IK
     effect_ik.target_position = current_position;
     effect_ik.target_offset = {0, 0, 0};
+
+    for(int i = 0; i < skeleton.joint_matrix_global.size(); i++) {
+        int parent = skeleton.parent_index[i];
+        effect_ik.parent_index[i] = parent;
+
+        if(parent != -1) {
+            effect_ik.child_index[parent] = i;
+        }
+    }
+
+    int current_joint = joint_end;
+    while(current_joint != effect_ik.joint_root_ik) {
+        vec3 p1 = skeleton.joint_matrix_global[current_joint].get_block_translation();
+        vec3 p2 = skeleton.joint_matrix_global[effect_ik.parent_index[current_joint]].get_block_translation();
+
+        effect_ik.joint_distance_parent[current_joint] = norm(p1 - p2);
+
+        current_joint = effect_ik.parent_index[current_joint];
+    }
+
+    current_joint = effect_ik.joint_root_ik;
+    while(current_joint != joint_end) {
+        vec3 p1 = skeleton.joint_matrix_global[current_joint].get_block_translation();
+        vec3 p2 = skeleton.joint_matrix_global[effect_ik.child_index[current_joint]].get_block_translation();
+
+        effect_ik.joint_distance_child[current_joint] = norm(p1 - p2);
+
+        current_joint = effect_ik.child_index[current_joint];
+    }
 }
 
 
@@ -325,41 +354,12 @@ void effect_ik_compute(effect_ik_structure const &effect_ik, skeleton_structure 
     }
 
     // for a joint, find its parent
-    std::map<int, int> parent_index;
+    std::map<int, int> parent_index = effect_ik.parent_index;
     // for a joint, find its child in the kinematic chain
-    std::map<int, int> child_index;
+    std::map<int, int> child_index = effect_ik.child_index;
 
-    for(int i = 0; i < skeleton.joint_matrix_global.size(); i++) {
-        int parent = skeleton.parent_index[i];
-        parent_index[i] = parent;
-
-        if(parent != -1) {
-            child_index[parent] = i;
-        }
-    }
-
-    std::map<int, float> joint_distance_parent;
-    std::map<int, float> joint_distance_child;
-
-    current_joint = joint_end;
-    while(current_joint != joint_start) {
-        vec3 p1 = skeleton.joint_matrix_global[current_joint].get_block_translation();
-        vec3 p2 = skeleton.joint_matrix_global[parent_index[current_joint]].get_block_translation();
-
-        joint_distance_parent[current_joint] = norm(p1 - p2);
-
-        current_joint = parent_index[current_joint];
-    }
-
-    current_joint = joint_start;
-    while(current_joint != joint_end) {
-        vec3 p1 = skeleton.joint_matrix_global[current_joint].get_block_translation();
-        vec3 p2 = skeleton.joint_matrix_global[child_index[current_joint]].get_block_translation();
-
-        joint_distance_child[current_joint] = norm(p1 - p2);
-
-        current_joint = child_index[current_joint];
-    }
+    std::map<int, float> joint_distance_parent = effect_ik.joint_distance_parent;
+    std::map<int, float> joint_distance_child = effect_ik.joint_distance_child;
 
     // set position of the constrained joint
     skeleton.joint_matrix_global[joint_end].set_block_translation(p_constrained);
@@ -377,25 +377,27 @@ void effect_ik_compute(effect_ik_structure const &effect_ik, skeleton_structure 
 
             // get the position of the current joint
             vec3 p1 = skeleton.joint_matrix_global[current_joint].get_block_translation();
-            // get the position of the parent joint
 
+            // get the position of the parent joint
             vec3 p2 = skeleton.joint_matrix_global[parent_index[current_joint]].get_block_translation();
 
             // compute the direction of the joint
             vec3 direction = normalize(p2 - p1);
 
             // the new position of the joint is the position of the parent joint + the length of the joint * the direction
-            vec3 new_position = p2 + joint_distance_parent[current_joint] * direction;
+            vec3 new_position = p2 - joint_distance_parent[current_joint] * direction;
 
             skeleton.joint_matrix_global[current_joint].set_block_translation(new_position);
 
             // update the current joint
             current_joint = parent_index[current_joint];
+
+            // update matrices
+            skeleton.update_joint_matrix_global_to_local();
         }
 
         // forward propagation
         current_joint = joint_start;
-
         while(current_joint != joint_end) {
             // skip the root joint
             if(current_joint == joint_start) {
@@ -418,6 +420,9 @@ void effect_ik_compute(effect_ik_structure const &effect_ik, skeleton_structure 
 
             // update the current joint
             current_joint = child_index[current_joint];
+
+            // update matrices
+            skeleton.update_joint_matrix_global_to_local();
         }
     }
 
